@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Hello World!</title>
+    <title>Hello World! </title>
   </head>
   <body>
     <h1>Hello World!</h1>
@@ -13,7 +13,27 @@
 
     <script>
       // You can also require other files to run in this process
-      require('./renderer.js')
+      // con renderer = require('./renderer.js')
+      const ipcRenderer = require('electron').ipcRenderer
+      ipcRenderer.on('read-audio-file-reply', (event, arg) => {
+          // Process Audio
+          console.log(arg.buffer)
+          let audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+          console.log(audioCtx)
+          let source = audioCtx.createBufferSource()
+          let analyser = audioCtx.createAnalyser()
+          audioCtx.decodeAudioData(arg.buffer, (buffer)=> {
+            source.buffer = buffer
+            source.connect(analyser)
+            let freqArray = new Float32Array(analyser.frequencyBinCount)
+            analyser.getFloatFrequencyData(freqArray)
+            console.log(freqArray)
+            
+          }, (err)=> {
+            console.log(err)
+          })
+          // let analyzer = audioCtx.createAnalyser()
+      })
     </script>
   </body>
 </html>

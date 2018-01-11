@@ -6,12 +6,13 @@ const BrowserWindow = electron.BrowserWindow
 
 const path = require('path')
 const url = require('url')
-
+const fs = require('fs')
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
 
 function createWindow () {
+
   // Create the browser window.
   mainWindow = new BrowserWindow({width: 800, height: 600})
 
@@ -31,6 +32,10 @@ function createWindow () {
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
     mainWindow = null
+  })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    readFiles(mainWindow)
   })
 }
 
@@ -58,3 +63,35 @@ app.on('activate', function () {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+
+function readFiles(browserWindow) {
+  console.log('Reading temp location')
+  let tempLocation = 'E:/Downloads/Good Luck!/Luck Life - Namae wo Yobu yo'
+  // normalize
+  tempLocation = path.win32.normalize(tempLocation)
+  // console.log(tempLocation)
+  fs.readdir(tempLocation, 'utf8', (err, data) => {
+    if (err) throw err;
+    let filePath = path.join(tempLocation, data[0])
+    console.log(filePath)
+    fs.readFile(filePath, (err, data) => {
+      if (err) throw err;
+      // console.log(data)
+
+      // let audioCtx = new (Window.AudioContext || Window.webkitAudioContext)()
+      // console.log(data)
+      // console.log(data.buffer)
+      // console.log(new Float32Array(data))
+
+      // browserWindow.webContents.send('read-audio-file-reply', data)
+      browserWindow.webContents.send('read-audio-file-reply', data)
+    })
+  })
+
+  return null
+}
+
+// electron.ipcMain.on('read-audio-file', (event, arg) => {
+//   console.log(arg)
+//   event.sender.send('read-audio-file-reply', audioData)
+// })
