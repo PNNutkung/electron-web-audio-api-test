@@ -1,39 +1,67 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Hello World! </title>
-  </head>
-  <body>
-    <h1>Hello World!</h1>
-    <!-- All of the Node.js APIs are available in this renderer process. -->
-    We are using Node.js <script>document.write(process.versions.node)</script>,
-    Chromium <script>document.write(process.versions.chrome)</script>,
-    and Electron <script>document.write(process.versions.electron)</script>.
 
-    <script>
-      // You can also require other files to run in this process
-      // con renderer = require('./renderer.js')
-      const ipcRenderer = require('electron').ipcRenderer
-      ipcRenderer.on('read-audio-file-reply', (event, arg) => {
-          // Process Audio
-          console.log(arg.buffer)
-          let audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-          console.log(audioCtx)
-          let source = audioCtx.createBufferSource()
-          let analyser = audioCtx.createAnalyser()
-          audioCtx.decodeAudioData(arg.buffer, (buffer)=> {
-            source.buffer = buffer
-            source.connect(analyser)
-            let freqArray = new Float32Array(analyser.frequencyBinCount)
-            analyser.getFloatFrequencyData(freqArray)
-            console.log(freqArray)
-            
-          }, (err)=> {
-            console.log(err)
-          })
-          // let analyzer = audioCtx.createAnalyser()
-      })
-    </script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <title>Hello World! </title>
+</head>
+
+<body>
+  <h1>Hello World!</h1>
+  <h2></h2>
+  <!-- All of the Node.js APIs are available in this renderer process. -->
+  We are using Node.js
+  <script>
+    document.write(process.versions.node)
+  </script>, Chromium
+  <script>
+    document.write(process.versions.chrome)
+  </script>, and Electron
+  <script>
+    document.write(process.versions.electron)
+  </script>.
+
+  <script>
+    // You can also require other files to run in this process
+    // con renderer = require('./renderer.js')
+    const ipcRenderer = require('electron').ipcRenderer
+    const Meyda = require('meyda')
+    let audioCtx = new AudioContext()
+
+    ipcRenderer.on('read-audio-file-reply', async(event, {data, duration}) => {
+      console.log(duration)
+      try {
+        let offlineCtx = new OfflineAudioContext(2, duration * 44100, 44100)
+        let source = offlineCtx.createBufferSource()
+
+        const buffer = await audioCtx.decodeAudioData(data.buffer)
+        source.buffer = buffer
+        source.connect(offlineCtx.destination)
+        source.start()
+        try {
+          const sampleRate = 1024
+          const renderedBuffer = await offlineCtx.startRendering()
+          console.log(renderedBuffer.duration)
+          const channelData = renderedBuffer.getChannelData(0)
+          const results = []
+          for (let i = 0; i < channelData.length - sampleRate; i += sampleRate) {
+            const r = Meyda.extract('mfcc', channelData.slice(i, i + sampleRate))
+            results.push(r)
+          }
+          //console.log(JSON.stringify(meydaAnalyzer))
+          // let channels = []
+          // for (let i = 0; i < renderedBuffer.numberOfChannels; ++i) {
+          //   channels.push(renderedBuffer.getChannelData(i))
+          // }
+          ipcRenderer.send('song:signal', results)
+        } catch (err) {
+          console.error(err.message)
+        }
+      } catch (err) {
+        console.log(err)
+      }
+    })
+  </script>
+</body>
+
 </html>

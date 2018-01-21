@@ -1,8 +1,7 @@
-const electron = require('electron')
+const { app, ipcMain, BrowserWindow} = require('electron')
+const json2csv = require('json2csv')
 // Module to control application life.
-const app = electron.app
 // Module to create native browser window.
-const BrowserWindow = electron.BrowserWindow
 
 const path = require('path')
 const url = require('url')
@@ -63,33 +62,60 @@ app.on('activate', function () {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
+const mm = require('music-metadata')
+const util = require('util')
 
-function readFiles(browserWindow) {
+async function readFiles(browserWindow) {
   console.log('Reading temp location')
-  let tempLocation = 'E:/Downloads/Good Luck!/Luck Life - Namae wo Yobu yo'
-  // normalize
-  tempLocation = path.win32.normalize(tempLocation)
-  // console.log(tempLocation)
-  fs.readdir(tempLocation, 'utf8', (err, data) => {
-    if (err) throw err;
-    let filePath = path.join(tempLocation, data[0])
-    console.log(filePath)
-    fs.readFile(filePath, (err, data) => {
+  let tempLocation = 'D:/minna no nihongo/book 1/disc 1'
+  let metadata
+  try {
+    metadata = await mm.parseFile(`${tempLocation}/cd0track03.mp3`, { native: true })
+    // normalize
+    tempLocation = path.win32.normalize(tempLocation)
+    // console.log(tempLocation)
+    fs.readdir(tempLocation, 'utf8', (err, data) => {
       if (err) throw err;
-      // console.log(data)
-
-      // let audioCtx = new (Window.AudioContext || Window.webkitAudioContext)()
-      // console.log(data)
-      // console.log(data.buffer)
-      // console.log(new Float32Array(data))
-
-      // browserWindow.webContents.send('read-audio-file-reply', data)
-      browserWindow.webContents.send('read-audio-file-reply', data)
+      let filePath = path.join(tempLocation, data[2])
+      console.log(filePath)
+      fs.readFile(filePath, (err, data) => {
+        if (err) throw err;
+  
+        // let audioCtx = new (Window.AudioContext || Window.webkitAudioContext)()
+        // console.log(data)
+        // console.log(data.buffer)
+        // console.log(new Float32Array(data))
+  
+        // browserWindow.webContents.send('read-audio-file-reply', data)
+        browserWindow.webContents.send('read-audio-file-reply', { data, duration: metadata.format.duration})
+      })
     })
-  })
+  } catch (err) {
+    console.log(err)
+  }
 
   return null
 }
+ipcMain.on('song:signal', (event, signals) => {
+  //console.log(signals)
+  try {
+    //Object.values(signals[1]).forEach(value => channel2.push(value))
+    let csv = 'channel0,channel1,channel2,channel3,channel4,channel5,channel6,channel7,channel8,channel9,channel10,channel11,channel12\r\n'
+    // signals.melFilterBank.map(value => {
+    //   csv+=`${value}\r\n`
+    // })
+    signals.map(signal => {
+      csv+=`${signal.join(',')}\r\n`
+    })
+
+    fs.writeFileSync('test2.csv', csv, (err) => {
+      if (err) console.log(err)
+      console.log('saved successfully.')
+    })
+  } catch (err) {
+    console.log(err)
+  } 
+})
 
 // electron.ipcMain.on('read-audio-file', (event, arg) => {
 //   console.log(arg)
